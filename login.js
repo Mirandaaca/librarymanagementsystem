@@ -100,7 +100,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     try {
         showLoader();
 
-        const response = await fetch('http://documentalmanage-001-site1.otempurl.com/api/Usuarios/LogIn', {
+        const response = await fetch('https://documentalmanage-001-site1.otempurl.com/api/Usuarios/LogIn', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -61,7 +61,7 @@ async function loadBooks() {
         document.getElementById('loadingSpinner').classList.remove('hidden');
         document.getElementById('librosGrid').classList.add('opacity-0');
         
-        const response = await fetch('http://documentalmanage-001-site1.otempurl.com/api/Ejemplares/ObtenerInformacionParaBusquedaPorEjemplares');
+        const response = await fetch('https://documentalmanage-001-site1.otempurl.com/api/Ejemplares/ObtenerInformacionParaBusquedaPorEjemplares');
         const data = await response.json();
 
         if (data.succeded) {

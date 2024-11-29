@@ -1,5 +1,5 @@
 // Configuración base para las peticiones
-const API_URL = 'http://documentalmanage-001-site1.otempurl.com/api/Carreras';
+const API_URL = 'https://documentalmanage-001-site1.otempurl.com/api/Carreras';
 
 // Estados
 let editMode = false;
