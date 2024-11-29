@@ -1,252 +1,154 @@
- // Manejar el toggle del sidebar
- const sidebar = document.getElementById('sidebar');
- const toggleBtn = document.getElementById('toggleSidebar');
- const toggleIcon = document.getElementById('toggleIcon');
+ // Función para mostrar/ocultar contraseña
+ function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const passwordToggle = document.getElementById('passwordToggle');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        passwordToggle.classList.remove('fa-eye');
+        passwordToggle.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        passwordToggle.classList.remove('fa-eye-slash');
+        passwordToggle.classList.add('fa-eye');
+    }
+}
 
- toggleBtn.addEventListener('click', () => {
-     sidebar.classList.toggle('w-64');
-     sidebar.classList.toggle('w-16');
-     sidebar.classList.toggle('sidebar-collapsed');
-     
-     // Ajustar el ícono
-     if (sidebar.classList.contains('w-16')) {
-         toggleIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />';
-     } else {
-         toggleIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />';
-     }
- });
-
- // Manejar los submenús
- const menuItems = document.querySelectorAll('.menu-item');
- menuItems.forEach(item => {
-     const button = item.querySelector('button');
-     const submenu = item.querySelector('.submenu');
-     const arrow = item.querySelector('.submenu-arrow');
-
-     button.addEventListener('click', () => {
-         // Solo mostrar submenú si el sidebar está expandido
-         if (!sidebar.classList.contains('sidebar-collapsed')) {
-             submenu.classList.toggle('hidden');
-             arrow.classList.toggle('rotate-180');
-         }
-     });
- });
- // Función para mostrar confirmación de cierre de sesión (puedes usarla en tu dashboard)
-function confirmLogout() {
-    return Swal.fire({
-        title: '¿Cerrar sesión?',
-        text: "¿Está seguro que desea cerrar la sesión?",
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#1d4ed8',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Sí, cerrar sesión',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            localStorage.clear();
-            window.location.href = 'login.html';
+// Función para mostrar el loader
+function showLoader() {
+    Swal.fire({
+        title: 'Iniciando sesión',
+        html: 'Por favor espere...',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
         }
     });
 }
-// Variables globales
-let allBooks = [];
-let filteredBooks = [];
-let currentPage = 1;
-const booksPerPage = 9;
 
-// Función para cargar los libros
-async function loadBooks() {
+// Función para mostrar error
+function showError(message) {
+    Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: message,
+        confirmButtonColor: '#1d4ed8'
+    });
+}
+
+// Función para mostrar éxito
+async function showSuccessAndRedirect(message) {
+   // Mostrar mensaje de éxito por 2 segundos
+   const result = await Swal.fire({
+    icon: 'success',
+    title: '¡Bienvenido!',
+    text: message,
+    showConfirmButton: false,
+    timer: 1500, // 2 segundos
+    timerProgressBar: true, // Muestra una barra de progreso
+    didOpen: () => {
+        Swal.showLoading();
+    }
+});
+
+// Después de que se cierre el mensaje de éxito, mostrar mensaje de redirección
+await Swal.fire({
+    icon: 'info',
+    title: 'Redireccionando...',
+    text: 'Será redirigido al panel principal',
+    showConfirmButton: false,
+    timer: 1000, // 1.5 segundos adicionales
+    timerProgressBar: true,
+    didOpen: () => {
+        Swal.showLoading();
+    }
+});
+
+// Finalmente redirigir
+window.location.href = 'index.html';
+}
+
+// Función para guardar datos en localStorage
+function saveUserData(userData) {
+    localStorage.setItem('jwtToken', userData.data.jwtToken);
+    localStorage.setItem('userName', userData.data.userName);
+    localStorage.setItem('userRole', userData.data.rol);
+    localStorage.setItem('userEmail', userData.data.email);
+    localStorage.setItem('userId', userData.data.idUsuario);
+    localStorage.setItem('userFullName', `${userData.data.datosUsuario.nombre} ${userData.data.datosUsuario.apellido}`);
+    
+    const expirationTime = new Date().getTime() + (60 * 60 * 1000);
+    localStorage.setItem('tokenExpiration', expirationTime.toString());
+}
+
+// Modificación en el manejo del envío del formulario
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    // Validación básica
+    if (!email || !password) {
+        showError('Por favor complete todos los campos');
+        return;
+    }
+
     try {
-        document.getElementById('loadingSpinner').classList.remove('hidden');
-        document.getElementById('librosGrid').classList.add('opacity-0');
-        
-        const response = await fetch('https://documentalmanage-001-site1.otempurl.com/api/Ejemplares/ObtenerInformacionParaBusquedaPorEjemplares');
+        showLoader();
+
+        const response = await fetch('https://documentalmanage-001-site1.otempurl.com/api/Usuarios/LogIn', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email,
+                password
+            })
+        });
+
         const data = await response.json();
 
         if (data.succeded) {
-            allBooks = data.data;
-            filteredBooks = [...allBooks];
-            displayBooks();
-            updatePaginationInfo();
+            // Guardamos los datos del usuario
+            saveUserData(data);
+            
+            // Mostramos mensaje de éxito y redireccionamos
+            await showSuccessAndRedirect(data.message);
+        } else {
+            showError(data.message || 'Credenciales incorrectas');
         }
     } catch (error) {
+        showError('Error al conectar con el servidor. Por favor intente más tarde.');
         console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudieron cargar los libros. Por favor, intenta de nuevo más tarde.',
-        });
-    } finally {
-        setTimeout(() => {
-            document.getElementById('loadingSpinner').classList.add('hidden');
-            document.getElementById('librosGrid').classList.remove('opacity-0');
-        }, 500);
     }
-}
-
-// Función para mostrar los libros
-function displayBooks() {
-    const grid = document.getElementById('librosGrid');
-    const noResults = document.getElementById('noResults');
-    
-    if (filteredBooks.length === 0) {
-        grid.innerHTML = '';
-        noResults.classList.remove('hidden');
-        document.getElementById('pagination').classList.add('hidden');
-        return;
-    }
-    
-    noResults.classList.add('hidden');
-    document.getElementById('pagination').classList.remove('hidden');
-
-    const startIndex = (currentPage - 1) * booksPerPage;
-    const endIndex = Math.min(startIndex + booksPerPage, filteredBooks.length);
-    const booksToShow = filteredBooks.slice(startIndex, endIndex);
-
-    grid.innerHTML = booksToShow.map(book => `
-        <div class="bg-white rounded-lg shadow-md overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-lg ${book.disponibilidad ? 'border-l-4 border-green-500' : 'border-l-4 border-red-500'}">
-            <div class="p-6">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900">${book.titulo}</h3>
-                    <div class="px-3 py-1.5 text-sm font-medium rounded ${book.disponibilidad ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} whitespace-nowrap">
-                        ${book.disponibilidad ? 'Disponible' : 'No disponible'}
-                    </div>
-                </div>
-                
-                <div class="space-y-2">
-                    <p class="text-sm text-gray-600">
-                        <span class="font-medium">Autores:</span> 
-                        ${book.autores.join(', ')}
-                    </p>
-                    <p class="text-sm text-gray-600">
-                        <span class="font-medium">Editorial:</span> 
-                        ${book.editorial}
-                    </p>
-                    <p class="text-sm text-gray-600">
-                        <span class="font-medium">Área:</span> 
-                        ${book.area}
-                    </p>
-                    <p class="text-sm text-gray-600">
-                        <span class="font-medium">Correlativo:</span> 
-                        ${book.correlativo}
-                    </p>
-                    <p class="text-sm text-gray-600">
-                        <span class="font-medium">Temas:</span> 
-                        ${book.temas.join(', ')}
-                    </p>
-                </div>
-            </div>
-        </div>
-    `).join('');
-
-    updatePaginationInfo();
-}
-
-// Función para actualizar la información de paginación
-function updatePaginationInfo() {
-    const startIndex = Math.min((currentPage - 1) * booksPerPage + 1, filteredBooks.length);
-    const endIndex = Math.min(currentPage * booksPerPage, filteredBooks.length);
-    const totalItems = filteredBooks.length;
-
-    document.getElementById('startIndex').textContent = startIndex;
-    document.getElementById('endIndex').textContent = endIndex;
-    document.getElementById('totalItems').textContent = totalItems;
-
-    // Actualizar estado de los botones
-    const prevButton = document.getElementById('prevButton');
-    const nextButton = document.getElementById('nextButton');
-    const prevButtonMobile = document.getElementById('prevButtonMobile');
-    const nextButtonMobile = document.getElementById('nextButtonMobile');
-
-    prevButton.disabled = currentPage === 1;
-    nextButton.disabled = endIndex >= totalItems;
-    prevButtonMobile.disabled = currentPage === 1;
-    nextButtonMobile.disabled = endIndex >= totalItems;
-
-    [prevButton, prevButtonMobile].forEach(button => {
-        button.classList.toggle('opacity-50', currentPage === 1);
-    });
-
-    [nextButton, nextButtonMobile].forEach(button => {
-        button.classList.toggle('opacity-50', endIndex >= totalItems);
-    });
-}
-
-// Función para filtrar libros
-function filterBooks(searchTerm) {
-    const term = searchTerm.toLowerCase();
-    const searchType = document.getElementById('searchType').value;
-
-    filteredBooks = allBooks.filter(book => {
-        switch(searchType) {
-            case 'autor':
-                return book.autores.some(autor => autor.toLowerCase().includes(term));
-            case 'area':
-                return book.area.toLowerCase().includes(term);
-            case 'editorial':
-                return book.editorial.toLowerCase().includes(term);
-            case 'correlativo':
-                return book.correlativo.toLowerCase().includes(term);
-            default:
-                return book.titulo.toLowerCase().includes(term) ||
-                       book.autores.some(autor => autor.toLowerCase().includes(term)) ||
-                       book.area.toLowerCase().includes(term) ||
-                       book.editorial.toLowerCase().includes(term) ||
-                       book.correlativo.toLowerCase().includes(term) ||
-                       book.temas.some(tema => tema.toLowerCase().includes(term));
-        }
-    });
-
-    currentPage = 1;
-    displayBooks();
-}
-
-// Event Listeners
-document.addEventListener('DOMContentLoaded', () => {
-    loadBooks();
-    
-    // Búsqueda con debounce
-    let searchTimeout;
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            filterBooks(e.target.value);
-        }, 300);
-    });
-
-    // Cambio de tipo de búsqueda
-    document.getElementById('searchType').addEventListener('change', () => {
-        filterBooks(document.getElementById('searchInput').value);
-    });
-
-    // Paginación
-    document.getElementById('prevButton').addEventListener('click', () => {
-        if (currentPage > 1) {
-            currentPage--;
-            displayBooks();
-        }
-    });
-
-    document.getElementById('nextButton').addEventListener('click', () => {
-        if (currentPage * booksPerPage < filteredBooks.length) {
-            currentPage++;
-            displayBooks();
-        }
-    });
-
-    // Paginación móvil
-    document.getElementById('prevButtonMobile').addEventListener('click', () => {
-        if (currentPage > 1) {
-            currentPage--;
-            displayBooks();
-        }
-    });
-
-    document.getElementById('nextButtonMobile').addEventListener('click', () => {
-        if (currentPage * booksPerPage < filteredBooks.length) {
-            currentPage++;
-            displayBooks();
-        }
-    });
 });
+
+// Verificar sesión activa al cargar la página
+window.addEventListener('load', () => {
+    const token = localStorage.getItem('jwtToken');
+    const expiration = localStorage.getItem('tokenExpiration');
+    
+    if (token && expiration) {
+        if (new Date().getTime() < parseInt(expiration)) {
+            // Sesión válida, redirigir con mensaje
+            showSuccessAndRedirect('Sesión activa').then(() => {
+                window.location.href = './dashboard.html';
+            });
+        } else {
+            // Token expirado
+            localStorage.clear();
+            Swal.fire({
+                icon: 'info',
+                title: 'Sesión expirada',
+                text: 'Por favor, inicie sesión nuevamente',
+                confirmButtonColor: '#1d4ed8'
+            });
+        }
+    }
+});
+
